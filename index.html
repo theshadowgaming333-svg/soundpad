@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Soundpad">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0D0D11">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Soundpad - Polyphonic Pad Sampler</title>
+  <style>
+    :root {
+      --bg: #0D0D11;
+      --surface: #16161F;
+      --card: #1E1E2A;
+      --border: #2C2C3E;
+      --text: #FFFFFF;
+      --text-muted: #8E8EA8;
+      --cyan: #06B6D4;
+      --indigo: #6366F1;
+      --red: #EF4444;
+      --green: #10B981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      padding: env(safe-area-inset-top, 10px) env(safe-area-inset-right, 12px) env(safe-area-inset-bottom, 12px) env(safe-area-inset-left, 12px);
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 4px 10px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--indigo));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+    }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 9px;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--cyan);
+      background: rgba(6, 182, 212, 0.18);
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+    .brand-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .grid-switcher {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .grid-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .grid-btn.active {
+      background: var(--cyan);
+      color: #000;
+      font-weight: 800;
+    }
+    .icon-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Grid Area */
+    .grid-container {
+      flex: 1;
+      margin: 8px 0;
+      display: grid;
+      gap: 10px;
+      touch-action: manipulation;
+    }
+
+    /* Pad Card */
+    .pad-card {
+      position: relative;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.08s;
+      touch-action: manipulation;
+    }
+    .pad-card:active, .pad-card.glowing {
+      transform: scale(0.93);
+    }
+
+    /* Empty Pad */
+    .pad-empty {
+      background: rgba(22, 22, 31, 0.7);
+      border: 1.5px dashed var(--border);
+      color: var(--text-muted);
+    }
+    .pad-empty .plus-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+      color: #757592;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .pad-empty .pad-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #757592;
+    }
+
+    /* Loaded Pad */
+    .pad-loaded {
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      background-size: cover;
+    }
+    .pad-loaded::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 45%);
+      pointer-events: none;
+    }
+    .pad-bead {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-bottom: 6px;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .pad-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      max-width: 90%;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .pad-status {
+      font-size: 9px;
+      font-family: monospace;
+      font-weight: 600;
+      margin-top: 3px;
+      opacity: 0.9;
+    }
+    .pad-edit-trigger {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.45);
+      border: none;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    /* Master Transport Bar */
+    .transport-bar {
+      background: rgba(22, 22, 31, 0.96);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .transport-status-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #555;
+      transition: all 0.2s;
+    }
+    .status-dot.rec {
+      background: var(--red);
+      box-shadow: 0 0 12px var(--red);
+      animation: pulse-dot 0.6s infinite alternate ease-in-out;
+    }
+    .status-dot.play {
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+    }
+    @keyframes pulse-dot {
+      from { transform: scale(1); opacity: 1; }
+      to { transform: scale(1.3); opacity: 0.5; }
+    }
+    .transport-timer {
+      font-family: monospace;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .transport-mode {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+    }
+    .transport-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-transport {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-rec {
+      background: rgba(239, 68, 68, 0.18);
+      color: var(--red);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .btn-rec.active {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+    }
+    .btn-play {
+      background: rgba(16, 185, 129, 0.18);
+      color: var(--green);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .btn-play.active {
+      background: var(--green);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
+    }
+    .btn-clear {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 10px;
+    }
+    .btn-export {
+      background: linear-gradient(135deg, var(--cyan), var(--indigo));
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Modal Sheet */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 28px 28px 0 0;
+      width: 100%;
+      max-width: 520px;
+      padding: 22px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+      animation: slide-up 0.25s ease-out;
+    }
+    @keyframes slide-up {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .rec-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .visualizer-canvas {
+      width: 100%;
+      height: 44px;
+      border-radius: 8px;
+      background: #000;
+    }
+    .mic-record-btn {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 12px 24px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .mic-record-btn.recording {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    }
+    .swatches-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    .swatch-item {
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s;
+    }
+    .swatch-item.active {
+      border-color: #fff;
+      transform: scale(1.12);
+      box-shadow: 0 0 10px currentColor;
+    }
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-delete-audio {
+      background: transparent;
+      border: none;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save-pad {
+      background: var(--cyan);
+      border: none;
+      color: #000;
+      padding: 9px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 30, 42, 0.95);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      z-index: 200;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-3c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zM9 10l12-3" />
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">SOUNDPAD <span class="badge">STUDIO</span></div>
+        <div class="brand-sub">Low-Latency Polyphonic Sampler</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="grid-switcher">
+        <button class="grid-btn" onclick="setGrid(3,3)">3×3</button>
+        <button class="grid-btn active" onclick="setGrid(4,3)">4×3</button>
+        <button class="grid-btn" onclick="setGrid(4,4)">4×4</button>
+      </div>
+      <button class="icon-btn" onclick="loadPresets()" title="Reload Presets">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Grid -->
+  <div id="grid" class="grid-container"></div>
+
+  <!-- Master Transport Bar -->
+  <div class="transport-bar">
+    <div class="transport-status-box">
+      <div id="status-dot" class="status-dot"></div>
+      <div>
+        <div id="transport-timer" class="transport-timer">00:00.0</div>
+        <div id="transport-mode" class="transport-mode">IDLE</div>
+      </div>
+    </div>
+
+    <div class="transport-controls">
+      <button id="btn-master-rec" class="btn-transport btn-rec" onclick="toggleMasterRecord()">
+        <span style="width:7px; height:7px; border-radius:50%; background:currentColor;"></span>
+        <span id="label-master-rec">REC</span>
+      </button>
+
+      <button id="btn-master-play" class="btn-transport btn-play" onclick="toggleMasterPlay()">
+        <span id="label-master-play">PLAY</span>
+      </button>
+
+      <button class="btn-clear" onclick="clearSequence()" title="Clear Sequence">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+
+    <button class="btn-export" onclick="exportWav()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+      </svg>
+      <span>EXPORT</span>
+    </button>
+  </div>
+
+  <!-- Modal Sheet -->
+  <div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span id="modal-dot" style="width:12px; height:12px; border-radius:50%; display:inline-block;"></span>
+          <span id="modal-title-text">Edit Pad</span>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">PAD LABEL / NAME</label>
+        <input id="modal-input-name" class="form-input" type="text" placeholder="e.g. Kick, Snare, Vocal Hook">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">AUDIO SAMPLING</label>
+        <div class="rec-box">
+          <canvas id="vis-canvas" class="visualizer-canvas" width="280" height="44"></canvas>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button id="modal-rec-btn" class="mic-record-btn">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" />
+              </svg>
+              <span id="modal-rec-label">Hold to Record Mic</span>
+            </button>
+            <button class="icon-btn" onclick="testPlayCurrent()" title="Preview">▶</button>
+          </div>
+          <div id="modal-rec-status" style="font-size:10px; color:var(--text-muted); font-family:monospace;">Ready to sample</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">PAD COLOR SWATCH</label>
+        <div id="swatches" class="swatches-grid"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btn-del-audio" class="btn-delete-audio" onclick="clearCurrentAudio()">Clear Sound</button>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-transport" style="color:var(--text-muted);" onclick="closeModal()">Cancel</button>
+          <button class="btn-save-pad" onclick="saveModal()">Save Pad</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Audio Engine
+    let audioCtx = null;
+    function getCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    const SWATCHES = [
+      { name: 'Cyan', hex: '#06B6D4' },
+      { name: 'Blue', hex: '#3B82F6' },
+      { name: 'Purple', hex: '#A855F7' },
+      { name: 'Pink', hex: '#EC4899' },
+      { name: 'Rose', hex: '#F43F5E' },
+      { name: 'Orange', hex: '#F97316' },
+      { name: 'Amber', hex: '#F59E0B' },
+      { name: 'Lime', hex: '#84CC16' },
+      { name: 'Emerald', hex: '#10B981' },
+      { name: 'Teal', hex: '#14B8A6' },
+      { name: 'Indigo', hex: '#6366F1' },
+      { name: 'Violet', hex: '#8B5CF6' }
+    ];
+
+    let gridCols = 4;
+    let gridRows = 3;
+    let pads = [];
+    let editingPadId = null;
+    let selectedHex = SWATCHES[0].hex;
+
+    // Sequencer
+    let masterMode = 'IDLE'; // IDLE, RECORDING, PLAYING
+    let masterStartTime = 0;
+    let masterEvents = [];
+    let masterDuration = 0;
+    let masterTimer = null;
+    let replayTimeouts = [];
+
+    // Mic
+    let mediaRecorder = null;
+    let micChunks = [];
+    let recordedBuffer = null;
+    let visAnim = null;
+
+    function initGrid(cols, rows) {
+      gridCols = cols;
+      gridRows = rows;
+      pads = [];
+      const total = cols * rows;
+      for (let i = 0; i < total; i++) {
+        pads.push({
+          id: `pad_${i}`,
+          index: i,
+          name: '',
+          colorHex: SWATCHES[i % SWATCHES.length].hex,
+          buffer: null,
+          hasAudio: false
+        });
+      }
+      render();
+    }
+
+    function setGrid(cols, rows) {
+      document.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      initGrid(cols, rows);
+      loadPresets();
+    }
+
+    function synthesize(type) {
+      const ctx = getCtx();
+      const sr = ctx.sampleRate;
+      let dur = 0.4;
+      if (type === 'kick') dur = 0.38;
+      if (type === 'snare') dur = 0.25;
+      if (type === 'hihat') dur = 0.09;
+      if (type === 'clap') dur = 0.22;
+      if (type === 'bass') dur = 0.55;
+      if (type === 'synth') dur = 0.45;
+
+      const numSamples = Math.floor(sr * dur);
+      const buffer = ctx.createBuffer(1, numSamples, sr);
+      const d = buffer.getChannelData(0);
+
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sr;
+        if (type === 'kick') {
+          const f = 150 * Math.exp(-t * 24) + 42;
+          d[i] = Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 12);
+        } else if (type === 'snare') {
+          const n = (Math.random() * 2 - 1) * Math.exp(-t * 18);
+          const tone = Math.sin(2 * Math.PI * 185 * t) * Math.exp(-t * 26);
+          d[i] = 0.65 * n + 0.35 * tone;
+        } else if (type === 'hihat') {
+          d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 65) * 0.75;
+        } else if (type === 'clap') {
+          const n = Math.random() * 2 - 1;
+          let env = t < 0.015 ? Math.exp(-t * 40) : (t < 0.035 ? Math.exp(-(t - 0.015) * 40) : Math.exp(-(t - 0.035) * 22));
+          d[i] = n * env * 0.85;
+        } else if (type === 'bass') {
+          d[i] = Math.tanh(Math.sin(2 * Math.PI * 55 * t) * 1.6) * Math.exp(-t * 3.2);
+        } else if (type === 'synth') {
+          const f = 440;
+          d[i] = (2 * (t * f - Math.floor(t * f + 0.5))) * Math.exp(-t * 4.5) * 0.5;
+        }
+      }
+      return buffer;
+    }
+
+    function loadPresets() {
+      const presets = [
+        { name: '808 Kick', type: 'kick', hex: '#06B6D4' },
+        { name: 'Crisp Snare', type: 'snare', hex: '#A855F7' },
+        { name: 'Closed Hat', type: 'hihat', hex: '#F59E0B' },
+        { name: 'Trap Clap', type: 'clap', hex: '#EC4899' },
+        { name: 'Sub Bass', type: 'bass', hex: '#3B82F6' },
+        { name: 'Cyber Synth', type: 'synth', hex: '#10B981' }
+      ];
+
+      presets.forEach((p, idx) => {
+        if (idx < pads.length) {
+          pads[idx].name = p.name;
+          pads[idx].colorHex = p.hex;
+          pads[idx].buffer = synthesize(p.type);
+          pads[idx].hasAudio = true;
+        }
+      });
+      render();
+      showToast("Factory drum presets loaded");
+    }
+
+    function render() {
+      const grid = document.getElementById('grid');
+      grid.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+      grid.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+      grid.innerHTML = '';
+
+      pads.forEach(pad => {
+        const el = document.createElement('div');
+        el.id = `ui-${pad.id}`;
+        el.className = `pad-card ${pad.hasAudio ? 'pad-loaded' : 'pad-empty'}`;
+
+        if (pad.hasAudio) {
+          el.style.backgroundColor = `${pad.colorHex}22`;
+          el.style.borderColor = `${pad.colorHex}77`;
+          el.innerHTML = `
+            <div class="pad-bead" style="background:${pad.colorHex}; color:${pad.colorHex};"></div>
+            <div class="pad-name">${pad.name || `Pad ${pad.index + 1}`}</div>
+            <div class="pad-status" style="color:${pad.colorHex}">${pad.buffer ? (pad.buffer.duration).toFixed(1) + 's' : 'READY'}</div>
+            <button class="pad-edit-trigger" onclick="event.stopPropagation(); openModal('${pad.id}')">✎</button>
+          `;
+        } else {
+          el.innerHTML = `
+            <div class="plus-icon">+</div>
+            <div class="pad-label">Pad ${pad.index + 1}</div>
+          `;
+        }
+
+        el.addEventListener('pointerdown', (e) => {
+          if (e.target.closest('.pad-edit-trigger')) return;
+          if (pad.hasAudio) {
+            triggerPad(pad.id);
+          } else {
+            openModal(pad.id);
+          }
+        });
+
+        grid.appendChild(el);
+      });
+    }
+
+    function triggerPad(padId, isReplay = false) {
+      const pad = pads.find(p => p.id === padId);
+      if (!pad || !pad.hasAudio || !pad.buffer) return;
+
+      const ctx = getCtx();
+      const src = ctx.createBufferSource();
+      src.buffer = pad.buffer;
+      src.connect(ctx.destination);
+      src.start(0);
+
+      // Glow Animation
+      const el = document.getElementById(`ui-${padId}`);
+      if (el) {
+        el.classList.add('glowing');
+        el.style.boxShadow = `0 0 24px ${pad.colorHex}`;
+        setTimeout(() => {
+          el.classList.remove('glowing');
+          el.style.boxShadow = '';
+        }, 150);
+      }
+
+      // Haptic
+      if (navigator.vibrate) navigator.vibrate(20);
+
+      // Record to master
+      if (masterMode === 'RECORDING' && !isReplay) {
+        const timestampMs = Math.round(performance.now() - masterStartTime);
+        masterEvents.push({ padId, timestampMs });
+      }
+    }
+
+    // Sequencer
+    function toggleMasterRecord() {
+      if (masterMode === 'RECORDING') {
+        stopMasterRecord();
+      } else {
+        startMasterRecord();
+      }
+    }
+
+    function startMasterRecord() {
+      getCtx();
+      if (masterMode === 'PLAYING') stopMasterPlay();
+      masterMode = 'RECORDING';
+      masterStartTime = performance.now();
+      masterEvents = [];
+
+      document.getElementById('status-dot').className = 'status-dot rec';
+      document.getElementById('transport-mode').innerText = 'RECORDING...';
+      document.getElementById('transport-mode').style.color = 'var(--red)';
+      document.getElementById('btn-master-rec').classList.add('active');
+      document.getElementById('label-master-rec').innerText = 'STOP';
+
+      clearInterval(masterTimer);
+      masterTimer = setInterval(() => {
+        const ms = performance.now() - masterStartTime;
+        document.getElementById('transport-timer').innerText = fmtTimer(ms);
+      }, 40);
+    }
+
+    function stopMasterRecord() {
+      masterDuration = performance.now() - masterStartTime;
+      masterMode = 'IDLE';
+      clearInterval(masterTimer);
+
+      document.getElementById('status-dot').className = 'status-dot';
+      document.getElementById('transport-mode').innerText = `${masterEvents.length} TAPS`;
+      document.getElementById('transport-mode').style.color = 'var(--cyan)';
+      document.getElementById('btn-master-rec').classList.remove('active');
+      document.getElementById('label-master-rec').innerText = 'REC';
+    }
+
+    function toggleMasterPlay() {
+      if (masterMode === 'PLAYING') {
+        stopMasterPlay();
+      } else {
+        startMasterPlay();
+      }
+    }
+
+    function startMasterPlay() {
+      if (masterEvents.length === 0) {
+        showToast("Tap REC to record a rhythm first!");
+        return;
+      }
+      if (masterMode === 'RECORDING') stopMasterRecord();
+
+      getCtx();
+      masterMode = 'PLAYING';
+      const playStart = performance.now();
+
+      document.getElementById('status-dot').className = 'status-dot play';
+      document.getElementById('transport-mode').innerText = 'REPLAYING...';
+      document.getElementById('transport-mode').style.color = 'var(--green)';
+      document.getElementById('btn-master-play').classList.add('active');
+      document.getElementById('label-master-play').innerText = 'STOP';
+
+      replayTimeouts.forEach(t => clearTimeout(t));
+      replayTimeouts = [];
+
+      masterEvents.forEach(evt => {
+        const t = setTimeout(() => triggerPad(evt.padId, true), evt.timestampMs);
+        replayTimeouts.push(t);
+      });
+
+      clearInterval(masterTimer);
+      masterTimer = setInterval(() => {
+        const ms = performance.now() - playStart;
+        document.getElementById('transport-timer').innerText = fmtTimer(ms);
+        if (ms >= (masterDuration || 5000)) stopMasterPlay();
+      }, 40);
+    }
+
+    function stopMasterPlay() {
+      masterMode = 'IDLE';
+      replayTimeouts.forEach(t => clearTimeout(t));
+      replayTimeouts = [];
+      clearInterval(masterTimer);
+
+      document.getElementById('status-dot').className = 'status-dot';
+      document.getElementById('transport-mode').innerText = 'IDLE';
+      document.getElementById('transport-mode').style.color = 'var(--text-muted)';
+      document.getElementById('btn-master-play').classList.remove('active');
+      document.getElementById('label-master-play').innerText = 'PLAY';
+    }
+
+    function clearSequence() {
+      if (masterMode === 'RECORDING') stopMasterRecord();
+      if (masterMode === 'PLAYING') stopMasterPlay();
+      masterEvents = [];
+      masterDuration = 0;
+      document.getElementById('transport-timer').innerText = '00:00.0';
+      document.getElementById('transport-mode').innerText = 'IDLE';
+      showToast("Sequence cleared");
+    }
+
+    function fmtTimer(ms) {
+      const sec = Math.floor(ms / 1000);
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      const t = Math.floor((ms % 1000) / 100);
+      return `${m}:${s}.${t}`;
+    }
+
+    // Modal
+    function openModal(padId) {
+      editingPadId = padId;
+      const pad = pads.find(p => p.id === padId);
+      selectedHex = pad.colorHex || SWATCHES[pad.index % SWATCHES.length].hex;
+      recordedBuffer = pad.buffer;
+
+      document.getElementById('modal-title-text').innerText = `Edit Pad #${pad.index + 1}`;
+      document.getElementById('modal-input-name').value = pad.name || '';
+      document.getElementById('modal-dot').style.backgroundColor = selectedHex;
+      document.getElementById('modal-rec-status').innerText = pad.hasAudio ? "Audio loaded" : "Ready to sample";
+
+      // Swatches
+      const cont = document.getElementById('swatches');
+      cont.innerHTML = '';
+      SWATCHES.forEach(s => {
+        const d = document.createElement('div');
+        d.className = `swatch-item ${s.hex === selectedHex ? 'active' : ''}`;
+        d.style.backgroundColor = s.hex;
+        d.onclick = () => {
+          selectedHex = s.hex;
+          document.getElementById('modal-dot').style.backgroundColor = selectedHex;
+          openModal(padId);
+        };
+        cont.appendChild(d);
+      });
+
+      document.getElementById('modal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open');
+      if (visAnim) cancelAnimationFrame(visAnim);
+    }
+
+    function saveModal() {
+      const pad = pads.find(p => p.id === editingPadId);
+      if (pad) {
+        pad.name = document.getElementById('modal-input-name').value.trim() || `Pad ${pad.index + 1}`;
+        pad.colorHex = selectedHex;
+        if (recordedBuffer) {
+          pad.buffer = recordedBuffer;
+          pad.hasAudio = true;
+        }
+      }
+      closeModal();
+      render();
+    }
+
+    function clearCurrentAudio() {
+      const pad = pads.find(p => p.id === editingPadId);
+      if (pad) {
+        pad.name = '';
+        pad.buffer = null;
+        pad.hasAudio = false;
+      }
+      closeModal();
+      render();
+    }
+
+    function testPlayCurrent() {
+      if (!recordedBuffer) return;
+      const ctx = getCtx();
+      const s = ctx.createBufferSource();
+      s.buffer = recordedBuffer;
+      s.connect(ctx.destination);
+      s.start(0);
+    }
+
+    // Mic recording
+    const recBtn = document.getElementById('modal-rec-btn');
+    const startRec = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        micChunks = [];
+
+        mediaRecorder.ondataavailable = e => micChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(micChunks, { type: 'audio/webm' });
+          const ab = await blob.arrayBuffer();
+          recordedBuffer = await getCtx().decodeAudioData(ab);
+          document.getElementById('modal-rec-status').innerText = `Captured ${(recordedBuffer.duration).toFixed(2)}s`;
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start();
+        recBtn.classList.add('recording');
+        document.getElementById('modal-rec-label').innerText = 'Recording Mic...';
+        drawVis(stream);
+      } catch (err) {
+        document.getElementById('modal-rec-status').innerText = "Mic blocked: loaded snare sample";
+        recordedBuffer = synthesize('snare');
+      }
+    };
+
+    const stopRec = () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+      recBtn.classList.remove('recording');
+      document.getElementById('modal-rec-label').innerText = 'Hold to Record Mic';
+      if (visAnim) cancelAnimationFrame(visAnim);
+    };
+
+    recBtn.addEventListener('mousedown', startRec);
+    recBtn.addEventListener('mouseup', stopRec);
+    recBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRec(); });
+    recBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRec(); });
+
+    function drawVis(stream) {
+      const ctx = getCtx();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      src.connect(analyser);
+
+      const canvas = document.getElementById('vis-canvas');
+      const cvsCtx = canvas.getContext('2d');
+      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      function loop() {
+        analyser.getByteFrequencyData(data);
+        cvsCtx.fillStyle = '#000';
+        cvsCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const w = (canvas.width / data.length) * 1.5;
+        let x = 0;
+        for (let i = 0; i < data.length; i++) {
+          const h = (data[i] / 255) * canvas.height;
+          cvsCtx.fillStyle = '#06B6D4';
+          cvsCtx.fillRect(x, canvas.height - h, w, h);
+          x += w + 2;
+        }
+        visAnim = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // Export Master WAV
+    function exportWav() {
+      if (masterEvents.length === 0) {
+        showToast("Record a rhythm first before exporting!");
+        return;
+      }
+
+      const sr = 44100;
+      let totalDur = 0;
+      masterEvents.forEach(evt => {
+        const pad = pads.find(p => p.id === evt.padId);
+        const dur = pad && pad.buffer ? pad.buffer.duration : 0.5;
+        const end = (evt.timestampMs / 1000) + dur;
+        if (end > totalDur) totalDur = end;
+      });
+
+      totalDur += 0.2;
+      const totalSamples = Math.ceil(sr * totalDur);
+      const mixBuf = new Float32Array(totalSamples);
+
+      masterEvents.forEach(evt => {
+        const pad = pads.find(p => p.id === evt.padId);
+        if (!pad || !pad.buffer) return;
+        const start = Math.floor((evt.timestampMs / 1000) * sr);
+        const d = pad.buffer.getChannelData(0);
+        for (let i = 0; i < d.length; i++) {
+          if (start + i < totalSamples) mixBuf[start + i] += d[i];
+        }
+      });
+
+      // Tanh soft limiter
+      for (let i = 0; i < mixBuf.length; i++) {
+        mixBuf[i] = Math.tanh(mixBuf[i]);
+      }
+
+      // Encode WAV
+      const blob = encodeWAV(mixBuf, sr);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Soundpad_Master_${Date.now()}.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Master WAV exported!");
+    }
+
+    function encodeWAV(samples, sr) {
+      const buf = new ArrayBuffer(44 + samples.length * 2);
+      const v = new DataView(buf);
+      function str(off, s) { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); }
+      str(0, 'RIFF');
+      v.setUint32(4, 36 + samples.length * 2, true);
+      str(8, 'WAVE');
+      str(12, 'fmt ');
+      v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true); // PCM
+      v.setUint16(22, 1, true); // Mono
+      v.setUint32(24, sr, true);
+      v.setUint32(28, sr * 2, true);
+      v.setUint16(32, 2, true);
+      v.setUint16(34, 16, true);
+      str(36, 'data');
+      v.setUint32(40, samples.length * 2, true);
+      let off = 44;
+      for (let i = 0; i < samples.length; i++, off += 2) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return new Blob([v], { type: 'audio/wav' });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 2500);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initGrid(4, 3);
+      loadPresets();
+    });
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(err => console.warn("Offline setup unavailable:", err));
+      });
+    }
+  </script>
+</body>
+</html>
